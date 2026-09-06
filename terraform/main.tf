@@ -15,7 +15,7 @@ resource "local_file" "hello" {
   filename = "${path.module}/output/hello.txt"
   content  = <<-EOT
     Hello from OpenTofu!
-    Ambiente: ${var.environment}
+    Ambiente: ${var.environment_name}
     Gerado via AWX Job Template.
   EOT
 }
