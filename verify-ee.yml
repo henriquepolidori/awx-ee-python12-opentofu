@@ -1,0 +1,29 @@
+---
+- name: Verify EE runtime
+  hosts: localhost
+  gather_facts: false
+  connection: local
+  tasks:
+    - name: Collect versions
+      command: "{{ item }}"
+      register: v
+      changed_when: false
+      loop:
+        - /usr/local/bin/tofu version
+        - /usr/bin/python3.12 --version
+
+    - name: Report
+      debug:
+        msg:
+          playbook_python: "{{ ansible_playbook_python }}"
+          tofu: "{{ v.results[0].stdout_lines[0] }}"
+          python: "{{ v.results[1].stdout }}"
+
+    - name: Assert Python 3.12 is the RUNTIME interpreter
+      assert:
+        that: "'3.12' in ansible_playbook_python or ansible_playbook_python.endswith('python3.12')"
+        fail_msg: "EE is running {{ ansible_playbook_python }}, not 3.12"
+
+    - name: Assert cloud.terraform is usable
+      command: ansible-doc -t module cloud.terraform.terraform
+      changed_when: false

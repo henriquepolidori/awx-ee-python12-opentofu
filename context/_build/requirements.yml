@@ -1,0 +1,20 @@
+---
+collections:
+  # OpenTofu/Terraform lifecycle: init/plan/apply + structured outputs.
+  # Preferred over ansible.builtin.command: returns parsed outputs and
+  # supports passing a saved plan between workflow nodes.
+  - name: cloud.terraform
+    version: ">=3.0.0,<4.0.0"
+
+  # AWS: S3 remote state backend, IAM, EC2.
+  - name: amazon.aws
+    version: ">=8.0.0,<10.0.0"
+
+  # Kubernetes: needed if orchestration touches remote clusters.
+  - name: kubernetes.core
+    version: ">=5.0.0,<7.0.0"
+
+  - name: ansible.posix
+    version: ">=1.5.4"
+  - name: community.general
+    version: ">=9.0.0"

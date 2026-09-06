@@ -1,0 +1,15 @@
+# System packages (bindep format). [platform:rpm] targets CentOS Stream 9.
+
+git [platform:rpm]
+unzip [platform:rpm]
+tar [platform:rpm]
+gzip [platform:rpm]
+ca-certificates [platform:rpm]
+openssh-clients [platform:rpm]
+rsync [platform:rpm]
+
+# Toolchain for wheels lacking prebuilt py312 binaries
+gcc [platform:rpm compile]
+make [platform:rpm compile]
+libffi-devel [platform:rpm compile]
+openssl-devel [platform:rpm compile]

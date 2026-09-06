@@ -1,0 +1,93 @@
+---
+# =============================================================================
+# Custom Execution Environment for AWX 24.6.1
+#   Python:  3.12  (explicit interpreter, NOT the base image default)
+#   Ansible: ansible-core 2.17.x  (supports py3.12)
+#   IaC:     OpenTofu binary + cloud.terraform collection
+#
+# Build:
+#   cd awx-ee
+#   ansible-builder build -v3 -t awx-ee-opentofu:24.6.1-py312
+#
+# NOTE: ansible-builder requires a dnf/rpm-based base image.
+# =============================================================================
+version: 3
+
+images:
+  base_image:
+    name: quay.io/centos/centos:stream9
+
+options:
+  package_manager_path: /usr/bin/dnf
+
+dependencies:
+  # ---- THE setting that pins this EE to Python 3.12 -------------------------
+  # package_system installs the interpreter.
+  # python_path makes ansible-builder use it for every pip install AND
+  # makes it the runtime interpreter. The base image default is irrelevant.
+  python_interpreter:
+    package_system: "python3.12 python3.12-pip python3.12-devel"
+    python_path: "/usr/bin/python3.12"
+
+  ansible_core:
+    package_pip: ansible-core>=2.17,<2.18
+  ansible_runner:
+    package_pip: ansible-runner
+
+  galaxy: requirements.yml
+  python: requirements.txt
+  system: bindep.txt
+
+additional_build_files:
+  - src: ansible.cfg
+    dest: configs
+
+additional_build_steps:
+  prepend_base:
+    # CRB repo provides -devel headers needed to compile some python wheels.
+    - RUN $PKGMGR install -y dnf-plugins-core && $PKGMGR config-manager --set-enabled crb || true
+
+  prepend_galaxy:
+    - ADD _build/configs/ansible.cfg /etc/ansible/ansible.cfg
+
+  append_final:
+    # ---- OpenTofu binary --------------------------------------------------
+    # HCL is a configuration language, not an executable one. There is no
+    # native Ansible/Python path to apply HCL - the CLI binary is mandatory.
+    # OpenTofu over Terraform: MPL-2.0 (no BUSL review when shipping this
+    # image internally) + native state encryption.
+    - |
+      RUN set -eux; \
+        ARCH="$(uname -m)"; \
+        case "$ARCH" in \
+          x86_64)  TOFU_ARCH=amd64 ;; \
+          aarch64) TOFU_ARCH=arm64 ;; \
+          *) echo "unsupported arch: $ARCH" >&2; exit 1 ;; \
+        esac; \
+        curl -fsSL -o /tmp/tofu.tar.gz \
+          "https://github.com/opentofu/opentofu/releases/download/v1.8.8/tofu_1.8.8_linux_${TOFU_ARCH}.tar.gz"; \
+        tar -xzf /tmp/tofu.tar.gz -C /usr/local/bin tofu; \
+        chmod 0755 /usr/local/bin/tofu; \
+        rm -f /tmp/tofu.tar.gz; \
+        ln -sf /usr/local/bin/tofu /usr/local/bin/terraform
+
+    # ---- Writable dirs for the provider plugin cache ----------------------
+    # EE pods can run as an arbitrary UID, so make these group-writable (gid 0).
+    - RUN mkdir -p /opt/tofu/plugin-cache /opt/tofu/data && chgrp -R 0 /opt/tofu && chmod -R g=u /opt/tofu
+
+    # ---- Environment ------------------------------------------------------
+    - ENV TF_PLUGIN_CACHE_DIR=/opt/tofu/plugin-cache
+    - ENV TF_DATA_DIR=/opt/tofu/data
+    - ENV TF_IN_AUTOMATION=1
+    - ENV TF_INPUT=0
+    - ENV TF_CLI_ARGS_plan="-lock-timeout=300s"
+    - ENV TF_CLI_ARGS_apply="-lock-timeout=300s"
+
+    # ---- Cleanup ----------------------------------------------------------
+    - RUN $PKGMGR clean all && rm -rf /var/cache/dnf /root/.cache
+
+    # ---- Build-time assertions (fail at build, not at job runtime) --------
+    - RUN /usr/bin/python3.12 --version
+    - RUN ansible --version | grep -E 'python version = 3\.12'
+    - RUN tofu version
+    - RUN ansible-galaxy collection list 2>/dev/null | grep -E 'cloud\.terraform'

@@ -1,0 +1,15 @@
+# Python deps, installed under /usr/bin/python3.12.
+# Keep minimal: collections declare most of their own requirements.
+
+boto3>=1.34.0
+botocore>=1.34.0
+
+# kubernetes.core
+kubernetes>=29.0.0
+
+# cloud.terraform state/plan JSON handling
+pyyaml>=6.0.1
+jmespath>=1.0.1
+
+# Validating extra_vars payloads arriving from Apigee
+jsonschema>=4.21.0
