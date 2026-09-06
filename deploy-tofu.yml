@@ -5,10 +5,26 @@
   connection: local
 
   vars:
-    tf_project_path: "{{ playbook_dir }}/../terraform"
+    tf_project_path: "{{ playbook_dir }}/terraform"
     tf_binary: "/usr/local/bin/tofu"
 
   tasks:
+    # ---- Bloco de diagnóstico: remova depois de confirmar que funciona ----
+    - name: DEBUG - show resolved paths
+      debug:
+        msg:
+          playbook_dir: "{{ playbook_dir }}"
+          resolved_project_path: "{{ tf_project_path }}"
+
+    - name: DEBUG - list terraform dir contents
+      command: "ls -la {{ tf_project_path }}"
+      register: ls_out
+      changed_when: false
+
+    - debug:
+        var: ls_out.stdout_lines
+    # ------------------------------------------------------------------------
+
     - name: Run tofu init + apply
       cloud.terraform.terraform:
         project_path: "{{ tf_project_path }}"
@@ -16,7 +32,7 @@
         state: present          # present=apply | planned=plan only | absent=destroy
         force_init: true
         variables:
-          environment: "{{ environment | default('dev') }}"
+          environment_name: "{{ tf_environment | default('dev') }}"
       register: tf_result
 
     - name: Show OpenTofu outputs

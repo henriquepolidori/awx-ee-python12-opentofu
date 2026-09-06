@@ -5,7 +5,7 @@
   connection: local
 
   vars:
-    tf_project_path: "{{ playbook_dir }}/../terraform"
+    tf_project_path: "{{ playbook_dir }}/terraform"
     tf_binary: "/usr/local/bin/tofu"
 
   tasks:
@@ -16,4 +16,4 @@
         state: absent
         force_init: true
         variables:
-          environment: "{{ environment | default('dev') }}"
+          environment_name: "{{ tf_environment | default('dev') }}"
